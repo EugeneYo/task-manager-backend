@@ -1,4 +1,4 @@
-import auth from "@middleware/auth";
+import auth from "@middleware/auth.middleware";
 // const express = require("express");
 import express from "express";
 const task = express.Router();

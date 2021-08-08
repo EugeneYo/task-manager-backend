@@ -1,7 +1,7 @@
 import express from "express";
 const user = express.Router();
 import { createNewUser, getProfile, updateProfile, deleteProfile, loginUser, logoutUser, logoutUserAll } from "@controllers/user.controller";
-import auth from "@middleware/auth";
+import auth from "@middleware/auth.middleware";
 
 user.route("/users").post(createNewUser);
 user.route("/users/login").post(loginUser);

@@ -6,10 +6,10 @@ dotenv.config({});
 import connectDB from "@database/mongoose";
 import { default as userRoute } from "@routes/user.routes";
 import { default as taskRoute } from "@routes/task.routes";
-import { PORT, JSON_WEB_TOKEN_SECRET, config } from "@config/config";
+import { PORT } from "@config/config";
+import { errorHandler } from "@middleware/handlers.middleware";
 
 // Configuring the server
-// const port = process.env.PORT || 5000;
 const app: Application = express();
 
 // Maintenance
@@ -18,16 +18,19 @@ const app: Application = express();
 // });
 
 app.use(express.json());
-// app.use(express.urlencoded({ extended: false }));
-
 app.use(cors());
+
+// Routes
 app.use(userRoute);
 app.use(taskRoute);
-
 app.use((req: Request, res: Response) => {
 	res.status(404).send("Route does not exist");
 });
-// Routes
+
+// Default error handler for Express send back HTML
+// Thus, created custom errorHandler to send json back
+// ErrorRequestHandler needs to be the last middleware
+app.use(errorHandler);
 
 // Initiate the server
 app.listen(PORT, () => {

@@ -1,96 +1,52 @@
 import User from "@models/user.model";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import { wrapper } from "@middleware/handlers.middleware";
+import CustomError from "@class/CustomError";
 
-const createNewUser = async (req: Request, res: Response) => {
+const createNewUser = wrapper(async (req: Request, res: Response) => {
 	const new_user = new User(req.body);
+	await new_user.save();
+	const token = await new_user.generateAuthToken(); // document methods
+	res.status(201).send({ user: new_user.getPublic(), token });
+});
 
-	try {
-		await new_user.save();
-		const token = await new_user.generateAuthToken(); // document methods
-		res.status(201).send({ user: new_user.getPublic(), token });
-	} catch (err) {
-		res.status(500).send(err);
-	}
-};
+const loginUser = wrapper(async (req: Request, res: Response, next: NextFunction) => {
+	const user = await User.findByCredentials(req.body.email, req.body.password); // model statics (methods)
+	const token = await user.generateAuthToken(); // document methods
+	res.status(200).send({ user: user.getPublic(), token });
+});
 
-const loginUser = async (req: Request, res: Response) => {
-	try {
-		const user = await User.findByCredentials(req.body.email, req.body.password); // model statics (methods)
-		const token = await user.generateAuthToken(); // document methods
-		res.status(200).send({ user: user.getPublic(), token });
-	} catch (err) {
-		res.status(400).send();
-	}
-};
+const logoutUser = wrapper(async (req: Request, res: Response) => {
+	req.user!.tokens = req.user!.tokens!.filter((token) => token.token !== req.token);
+	await req.user!.save();
+	res.status(200).send();
+});
 
-const logoutUser = async (req: Request, res: Response) => {
-	try {
-		if (req.user) {
-			req.user.tokens = req.user.tokens?.filter((token) => token.token !== req.token);
-			await req.user.save();
-			res.status(200).send();
-		}
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+const logoutUserAll = wrapper(async (req: Request, res: Response) => {
+	req.user!.tokens = [];
+	await req.user!.save();
+	res.status(200).send();
+});
 
-const logoutUserAll = async (req: Request, res: Response) => {
-	try {
-		if (req.user) {
-			req.user.tokens = [];
-			await req.user.save();
-			res.status(200).send();
-		}
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+const getProfile = wrapper(async (req: Request, res: Response) => {
+	res.status(200).send(req.user!.getPublic());
+});
 
-// Not needed
-// const getAllUsers = async (req: Request, res: Response) => {
-// 	try {
-// 		const all_users = await User.find({});
-// 		res.status(200).send(all_users);
-// 	} catch (e) {
-// 		res.status(500).send();
-// 	}
-// };
-
-const getProfile = async (req: Request, res: Response) => {
-	if (req.user) {
-		// const user_public = await req.user.getPublic();
-		res.status(200).send(req.user.getPublic());
-	}
-};
-
-const updateProfile = async (req: Request, res: Response) => {
+const updateProfile = wrapper(async (req: Request, res: Response) => {
 	const properties: string[] = Object.keys(req.body);
 	const authorizedUpdates: string[] = Object.keys(User.schema.obj);
-
 	const isValid = properties.every((property) => authorizedUpdates.includes(property));
 
-	!isValid && res.status(400).send({ error: "Invalid updates" });
+	if (!isValid) throw new CustomError(400, "Invalid updates");
 
-	// if (!isValid) return res.status(400).send({ error: "Invalid Updates" });
+	properties.forEach((property) => (req.user![property] = req.body[property]));
+	await req.user!.save();
+	res.status(200).send(req.user!.getPublic());
+});
 
-	try {
-		const current_user = req.user!;
-		properties.forEach((property) => (current_user[property] = req.body[property]));
-		await current_user.save();
-		res.status(200).send(current_user.getPublic());
-	} catch (e) {
-		res.status(400).send();
-	}
-};
-
-const deleteProfile = async (req: Request, res: Response) => {
-	try {
-		await req.user?.remove();
-		res.status(200).send("Deleted");
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+const deleteProfile = wrapper(async (req: Request, res: Response) => {
+	await req.user!.remove();
+	res.status(200).send("Deleted");
+});
 
 export { createNewUser, getProfile, updateProfile, deleteProfile, loginUser, logoutUser, logoutUserAll };

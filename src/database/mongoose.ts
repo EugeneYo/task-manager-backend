@@ -1,5 +1,6 @@
 // const mongoose = require("mongoose");
 import mongoose from "mongoose";
+import { DATABASE_URL } from "@config/config";
 // mongod --dbpath=C:\Users\Eugene\mongodb-data
 
 const connectDB = () => {
@@ -9,10 +10,10 @@ const connectDB = () => {
 	mongoose.set("useUnifiedTopology", true);
 
 	return mongoose
-		.connect("mongodb://127.0.0.1:27017/task-manager-api")
-		.then(() => console.log("Connected"))
-		.catch((e) => {
-			console.log(e);
+		.connect(DATABASE_URL)
+		.then(() => console.log("Successfully connected to the database "))
+		.catch((err) => {
+			console.log(err);
 			process.exit(1);
 		});
 };

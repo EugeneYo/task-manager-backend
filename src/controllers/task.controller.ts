@@ -1,11 +1,13 @@
 // const Task = require("../../models/task");
 import Task from "@models/task.model";
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
+import { wrapper } from "@middleware/handlers.middleware";
+import CustomError from "@class/CustomError";
 
 // GET /tasks/?completed=true
 // GET /tasks/?limit=3&page=4
 // GET /tasks/?sortBy=createdAt:desc
-const getAllTasks = async (req: Request, res: Response) => {
+const getAllTasks = wrapper(async (req: Request, res: Response) => {
 	const sort: {
 		[index: string]: number | undefined;
 		createdAt?: number;
@@ -41,73 +43,53 @@ const getAllTasks = async (req: Request, res: Response) => {
 		options.sort = sort;
 	}
 
-	try {
-		await req.user
-			?.populate({
-				path: "tasks",
-				match,
-				options,
-			})
-			.execPopulate();
-		res.status(200).send(req.user?.tasks);
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+	await req
+		.user!.populate({
+			path: "tasks",
+			match,
+			options,
+		})
+		.execPopulate();
+	res.status(200).send(req.user!.tasks);
+});
 
-const createNewTask = async (req: Request, res: Response) => {
-	const new_task = new Task({ ...req.body, author: req.user?._id });
+const createNewTask = wrapper(async (req: Request, res: Response) => {
+	const new_task = new Task({ ...req.body, author: req.user!._id });
 
-	try {
-		await new_task.save();
-		res.status(201).send(new_task);
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+	await new_task.save();
+	res.status(201).send(new_task);
+});
 
-const getCurrentTask = async (req: Request, res: Response) => {
+const getCurrentTask = wrapper(async (req: Request, res: Response, next: NextFunction) => {
 	const _id = req.params.id;
-	try {
-		const current_task = await Task.findOne({ _id, author: req.user?._id });
-		!current_task && res.status(400).send();
+	const current_task = await Task.findOne({ _id, author: req.user!._id });
 
-		res.status(200).send(current_task);
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+	if (!current_task) throw new CustomError(404, "Task with given ID can't be found");
+	res.status(200).send(current_task);
+});
 
-const updateCurrentTask = async (req: Request, res: Response) => {
+const updateCurrentTask = wrapper(async (req: Request, res: Response) => {
 	const properties = Object.keys(req.body);
 	const authorizedUpdates = Object.keys(Task.schema.obj);
 	const isValid = properties.every((property) => authorizedUpdates.includes(property));
-	if (!isValid) return res.status(400).send({ error: "Invalid Updates" });
+	if (!isValid) throw new CustomError(400, "Invalid updates");
 
 	const _id = req.params.id;
-	try {
-		const current_task = await Task.findOne({ _id, author: req.user?._id });
-		if (!current_task) return res.status(404).send();
-		properties.forEach((property) => (current_task[property] = req.body[property]));
+	const current_task = await Task.findOne({ _id, author: req.user!._id });
+	if (!current_task) throw new CustomError(404, "Task with the given ID can't be found");
 
-		await current_task?.save();
+	properties.forEach((property) => (current_task[property] = req.body[property]));
+	await current_task!.save();
+	res.status(200).send(current_task);
+});
 
-		res.status(200).send(current_task);
-	} catch (e) {
-		res.status(400).send();
-	}
-};
-
-const deleteCurrentTask = async (req: Request, res: Response) => {
+const deleteCurrentTask = wrapper(async (req: Request, res: Response) => {
 	const _id = req.params.id;
-	try {
-		const current_task = await Task.findOne({ _id, author: req.user?._id });
-		if (!current_task) return res.status(404).send();
-		current_task.remove();
-		res.status(200).send(current_task);
-	} catch (e) {
-		res.status(500).send();
-	}
-};
+
+	const current_task = await Task.findOne({ _id, author: req.user!._id });
+	if (!current_task) throw new CustomError(404, "Task with the given ID can't be found");
+	current_task.remove();
+	res.status(200).send(current_task);
+});
 
 export { getAllTasks, createNewTask, getCurrentTask, updateCurrentTask, deleteCurrentTask };

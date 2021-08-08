@@ -4,6 +4,7 @@ import validator from "validator";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { JSON_WEB_TOKEN_SECRET } from "@config/config";
+import CustomError from "@class/CustomError";
 
 interface IUser {
 	[index: string]: any; // string type index signature
@@ -117,22 +118,15 @@ UserSchema.methods.getPublic = function () {
 	// publicProfile.password = "";
 	delete publicProfile.password;
 	delete publicProfile.tokens;
-
-	console.log(publicProfile);
-
 	return publicProfile;
 };
 // statics are the methods defined on the Model.
 UserSchema.statics.findByCredentials = async (email, password) => {
 	const user = await User.findOne({ email });
-	if (!user) {
-		throw new Error("Unable to Login");
-	}
+	if (!user) throw new CustomError(404, "User has not registered yet");
 
 	const isMatch = await bcrypt.compare(password, user.password);
-	if (!isMatch) {
-		throw new Error("Unable to Login");
-	}
+	if (!isMatch) throw new CustomError(404, "Unable to login");
 
 	return user;
 };
@@ -147,6 +141,27 @@ UserSchema.pre("save", async function (next: HookNextFunction) {
 	}
 	next();
 });
+
+// Throw errors raised after saving the user
+UserSchema.post("save", function (error: any, doc: IUserDocument, next: HookNextFunction) {
+	var errorMessage: string;
+	console.log(error);
+	if (error.code == 11000) {
+		const field = Object.keys(error.keyValue)[0];
+		errorMessage = field.charAt(0).toUpperCase() + field.slice(1) + " already exists";
+	} else if (error.name === "ValidationError") {
+		var temp_message: string[] = [];
+		for (var field in error.errors) {
+			temp_message.push(error.errors[field].message);
+		}
+		errorMessage = temp_message.join(". ");
+	} else {
+		errorMessage = error;
+	}
+	console.log(errorMessage);
+	next(new CustomError(400, errorMessage));
+});
+
 // Delete user tasks when the user is removed
 UserSchema.pre("remove", async function (next: HookNextFunction) {
 	const user = this;
