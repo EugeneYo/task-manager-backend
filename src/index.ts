@@ -24,14 +24,20 @@ const app: Application = express();
 
 app.use(express.json());
 app.use(cors());
+
+// Redirect the homepage to API documentation
+app.get("/", (req: Request, res: Response) => {
+	res.redirect("/api-docs/redocs");
+});
+
 // Serve api documentation using Swagger UI
 app.use("/api-docs/swaggerui", swaggerUI.serve, swaggerUI.setup(swaggerDoc));
 // Serve api documentation using redocs
 app.use("/api-docs/redocs", express.static(path.join(__dirname, "../public")));
 
 // Routes
-app.use(userRoute);
-app.use(taskRoute);
+app.use("/api", userRoute);
+app.use("/api", taskRoute);
 app.use((req: Request, res: Response) => {
 	res.status(404).send("Route does not exist");
 });

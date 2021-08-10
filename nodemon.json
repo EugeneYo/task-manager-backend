@@ -8,7 +8,7 @@
     ],
     "watch": [
         "src",
-        "./swaggerAPI.yml"
+        "../public/task-manager-api.yml"
     ],
     "execMap": {
         "ts": "node -r ts-node/register "
