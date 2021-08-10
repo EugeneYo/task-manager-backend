@@ -44,7 +44,7 @@ app.use(errorHandler);
 // Initiate the server
 const initiateServer = async () => {
 	try {
-		await connectDB(DATABASE_URL_LOCAL);
+		await connectDB(DATABASE_URL);
 		app.listen(PORT, () => {
 			console.log(`Server is up on port ${PORT}`);
 		});
