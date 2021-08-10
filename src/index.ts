@@ -9,11 +9,12 @@ import { default as userRoute } from "@routes/user.routes";
 import { default as taskRoute } from "@routes/task.routes";
 import { DATABASE_URL, DATABASE_URL_LOCAL, PORT } from "@config/config";
 import { errorHandler } from "@middleware/handlers.middleware";
+
+import path from "path";
 import swaggerUI from "swagger-ui-express";
 import yaml from "yamljs";
-const swaggerDoc = yaml.load("./swaggerAPI.yml");
 
-// Configuring the server
+const swaggerDoc = yaml.load("./public/task-manager-api.yml");
 const app: Application = express();
 
 // Maintenance
@@ -23,8 +24,11 @@ const app: Application = express();
 
 app.use(express.json());
 app.use(cors());
+// Serve api documentation using Swagger UI
+app.use("/api-docs/swaggerui", swaggerUI.serve, swaggerUI.setup(swaggerDoc));
+// Serve api documentation using redocs
+app.use("/api-docs/redocs", express.static(path.join(__dirname, "../public")));
 
-app.use("/api-docs", swaggerUI.serve, swaggerUI.setup(swaggerDoc));
 // Routes
 app.use(userRoute);
 app.use(taskRoute);
