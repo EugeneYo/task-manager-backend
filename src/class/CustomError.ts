@@ -5,8 +5,9 @@ class CustomError extends Error {
 		super(message);
 		this.statusCode = statusCode;
 		this.message = message;
-		const realPrototype = new.target.prototype;
 
+		// Define the instanceof the class as CustomError
+		const realPrototype = new.target.prototype;
 		if (Object.setPrototypeOf) {
 			Object.setPrototypeOf(this, realPrototype);
 		}

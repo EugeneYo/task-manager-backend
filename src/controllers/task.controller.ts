@@ -1,4 +1,4 @@
-// const Task = require("../../models/task");
+import { IIndexable } from "@models/user.model";
 import Task from "@models/task.model";
 import { NextFunction, Request, Response } from "express";
 import { wrapper } from "@middleware/handlers.middleware";
@@ -9,7 +9,6 @@ import CustomError from "@class/CustomError";
 // GET /tasks/?sortBy=createdAt:desc
 const getAllTasks = wrapper(async (req: Request, res: Response) => {
 	const sort: {
-		[index: string]: number | undefined;
 		createdAt?: number;
 		updatedAt?: number;
 		completed?: number;
@@ -39,7 +38,7 @@ const getAllTasks = wrapper(async (req: Request, res: Response) => {
 		// createdAt : -1 ==> return latest, 1 ==> return oldest
 		// updatedAt : -1 ==> return latest, 1 ==> return oldest
 		// completed : -1 ==> return true first 1==> return false
-		sort[property[0]] = property[1] === "desc" ? -1 : 1;
+		(sort as IIndexable)[property[0]] = property[1] === "desc" ? -1 : 1;
 		options.sort = sort;
 	}
 
@@ -62,6 +61,7 @@ const createNewTask = wrapper(async (req: Request, res: Response) => {
 
 const getCurrentTask = wrapper(async (req: Request, res: Response, next: NextFunction) => {
 	const _id = req.params.id;
+	if (!_id.match(/^[0-9a-fA-F]{24}$/)) throw new CustomError(400, "Invalid id");
 	const current_task = await Task.findOne({ _id, author: req.user!._id });
 
 	if (!current_task) throw new CustomError(404, "Task with given ID can't be found");
@@ -78,7 +78,7 @@ const updateCurrentTask = wrapper(async (req: Request, res: Response) => {
 	const current_task = await Task.findOne({ _id, author: req.user!._id });
 	if (!current_task) throw new CustomError(404, "Task with the given ID can't be found");
 
-	properties.forEach((property) => (current_task[property] = req.body[property]));
+	properties.forEach((property) => ((current_task as IIndexable)[property] = req.body[property]));
 	await current_task!.save();
 	res.status(200).send(current_task);
 });

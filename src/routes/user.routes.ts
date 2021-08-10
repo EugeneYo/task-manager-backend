@@ -9,7 +9,6 @@ user.route("/users/login").post(loginUser);
 // Authorized route
 user.route("/users/logout").post(auth, logoutUser);
 user.route("/users/logoutAll").post(auth, logoutUserAll);
-// user.route("/users").get(getAllUsers); // needs to be deleted
 user.route("/users/me").get(auth, getProfile);
 user.route("/users/me").patch(auth, updateProfile);
 user.route("/users/me").delete(auth, deleteProfile);

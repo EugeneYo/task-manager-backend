@@ -6,11 +6,15 @@ import jwt from "jsonwebtoken";
 import { JSON_WEB_TOKEN_SECRET } from "@config/config";
 import CustomError from "@class/CustomError";
 
-interface IUser {
-	[index: string]: any; // string type index signature
+export interface IIndexable {
+	[index: string]: any;
+}
+
+export interface IUser {
+	// [index: string]: any; // string type index signature
 	name: string;
 	email: string;
-	password: string;
+	password?: string;
 	age?: number;
 	tokens?: { token: string }[];
 	tasks?: { task: ITask }[];
@@ -37,7 +41,7 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
 		},
 		email: {
 			type: String,
-			required: true,
+			required: [true, "An email is required"],
 			unique: true,
 			trim: true,
 			validate(value: IUserDocument["email"]) {
@@ -50,7 +54,7 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
 			trim: true,
 			minLength: [6, "Password must be at least 6 characters long"],
 			validate(value: IUserDocument["password"]) {
-				if (value.toLowerCase().includes("password")) throw new Error("Password cannot contain 'password'");
+				if (value!.toLowerCase().includes("password")) throw new Error("Password cannot contain 'password'");
 			},
 		},
 		age: {
@@ -83,11 +87,8 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
 // methods are defined on the document(instance).
 UserSchema.methods.generateAuthToken = async function () {
 	const user = this;
-
 	const token = jwt.sign({ _id: user._id.toString() }, JSON_WEB_TOKEN_SECRET, {});
-
 	user.tokens = user.tokens?.concat({ token });
-
 	await user.save();
 	return token;
 };
@@ -115,7 +116,7 @@ UserSchema.methods.getPublic = function () {
 	const user = this;
 	const publicProfile = user.toObject();
 
-	// publicProfile.password = "";
+	delete publicProfile.__v;
 	delete publicProfile.password;
 	delete publicProfile.tokens;
 	return publicProfile;
@@ -125,8 +126,8 @@ UserSchema.statics.findByCredentials = async (email, password) => {
 	const user = await User.findOne({ email });
 	if (!user) throw new CustomError(404, "User has not registered yet");
 
-	const isMatch = await bcrypt.compare(password, user.password);
-	if (!isMatch) throw new CustomError(404, "Unable to login");
+	const isMatch = await bcrypt.compare(password, user.password!);
+	if (!isMatch) throw new CustomError(403, "Access denied");
 
 	return user;
 };
@@ -134,31 +135,31 @@ UserSchema.statics.findByCredentials = async (email, password) => {
 // Mongoose middleware
 // hash the password upon save()
 UserSchema.pre("save", async function (next: HookNextFunction) {
-	const user = this as IUserDocument;
+	const user = this;
 
 	if (user.isModified("password")) {
-		user.password = await bcrypt.hash(user.password, 10);
+		user.password = await bcrypt.hash(user.password!, 10);
 	}
 	next();
 });
 
 // Throw errors raised after saving the user
 UserSchema.post("save", function (error: any, doc: IUserDocument, next: HookNextFunction) {
-	var errorMessage: string;
-	console.log(error);
+	let errorMessage: string;
 	if (error.code == 11000) {
 		const field = Object.keys(error.keyValue)[0];
+		// Name already exists
 		errorMessage = field.charAt(0).toUpperCase() + field.slice(1) + " already exists";
 	} else if (error.name === "ValidationError") {
-		var temp_message: string[] = [];
-		for (var field in error.errors) {
+		let temp_message: string[] = [];
+		for (let field in error.errors) {
 			temp_message.push(error.errors[field].message);
 		}
+		// A username is required. An email is required
 		errorMessage = temp_message.join(". ");
 	} else {
 		errorMessage = error;
 	}
-	console.log(errorMessage);
 	next(new CustomError(400, errorMessage));
 });
 

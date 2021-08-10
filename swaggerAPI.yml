@@ -1,0 +1,662 @@
+openapi: "3.0.2"
+info:
+  title: Task Manager API
+  description: "A very simple task manager API used for learning purposes"
+  version: "1.0"
+servers:
+  - url: http://localhost:5000
+tags:
+  - name: User
+    description: User managing API
+  - name: Task
+    description: Task managing API
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: A **unique** JWT token is generated upon registration and user login. It must be used in the request header called Authorization. Eg. ```Authorization:Bearer {{token}}```
+
+  schemas:
+    User:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        _id:
+          type: "mongoose.Schema.Types.ObjectId"
+          description: Auto-generated id by mongoose
+        name:
+          type: string
+          description: Unique username from the user
+        email:
+          type: string
+          description: Unique email from the user
+        password:
+          type: string
+          description: Password must be at least 6 character long and must not contain 'password'.
+        age:
+          type: integer
+          description: Positive age value of the user. (DEFAULT:0)
+        createdAt:
+          type: "Date"
+          description: Date and time when user is created
+        updatedAt:
+          type: "Date"
+          description: Date and time when user is updated
+        tokens:
+          type: array
+          description: Array of token
+          items:
+            $ref: "#/components/schemas/Token"
+      # example:
+      #   name: James Bond
+      #   email: james_bond@mission.com
+      #   password: mission007
+    Task:
+      type: object
+      required:
+        - author
+        - description
+      properties:
+        _id:
+          type: "mongoose.Schema.Types.ObjectId"
+          description: Auto-generated id by mongoose
+        description:
+          type: string
+          description: The description of the task
+        completed:
+          type: boolean
+          description: The status of the task. (DEFAULT:false)
+        author:
+          type: "mongoose.Schema.Types.ObjectId"
+          description: The user's id who owns the task
+        createdAt:
+          type: "Date"
+          description: Date and time when the task is created
+        updatedAt:
+          type: "Date"
+          description: Date and time when the task is updated
+
+    Token:
+      type: object
+      required:
+        - token
+      properties:
+        token:
+          type: string
+          description: JWT token
+
+    RequestCreateUser:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          description: Unique username from the user
+        email:
+          type: string
+          description: Unique email from the user
+        password:
+          type: string
+          description: Password must be at least 6 character long and must not contain 'password'.
+        age:
+          type: integer
+          description: Positive age value of the user. (DEFAULT:0)
+      example:
+        name: James Bond
+        email: james_bond@mission.com
+        password: mission007
+
+    RequestLoginUser:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          description: user's email
+        password:
+          type: string
+          description: user's password
+      example:
+        email: james_bond@mission.com
+        password: mission007
+
+    RequestUpdateUser:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Unique username from the user
+        email:
+          type: string
+          description: Unique email from the user
+        password:
+          type: string
+          description: Password must be at least 6 character long and must not contain 'password'.
+        age:
+          type: integer
+          description: Positive age value of the user. (DEFAULT:0)
+      example:
+        name: New James Bond
+        email: new_james_bond@mission.com
+        password: new_mission007
+
+    RequestCreateTask:
+      type: object
+      required:
+        - author
+        - description
+      properties:
+        description:
+          type: string
+          description: The description of the task
+        completed:
+          type: boolean
+          description: The status of the task. (DEFAULT:false)
+        author:
+          type: "mongoose.Schema.Types.ObjectId"
+          description: The user's id who owns the task. (Auto inserted, thus no need to explicitly insert)
+
+    RequestUpdateTask:
+      type: object
+      required:
+        - description
+      properties:
+        description:
+          type: string
+          description: The description of the task
+        completed:
+          type: boolean
+          description: The status of the task. (DEFAULT:false)
+
+paths:
+  /users:
+    post:
+      tags:
+        - User
+      summary: Register a new user
+      requestBody:
+        description: User **name**, **email**, and **password** are required to be registered into the database
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestCreateUser"
+            example:
+              name: James Bond
+              email: james_bond@mission.com
+              password: mission007
+      responses:
+        201:
+          description: Successfully registered the user
+          content:
+            application/json:
+              example:
+                user:
+                  _id: 6111d3a84df9cf27887c1f20
+                  name: James Bond
+                  email: james_bond@mission.com
+                  age: 0
+                  createdAt: 2021-08-10T02:17:03.009Z
+                  updatedAt: 2021-08-10T02:17:03.009Z
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJfaWQiOiI2MTExZTE5ZTAwOGQ5YTMzYWM5NTI0YmMiLCJpYXQiOjE2Mjg1NjE4MjN9Be3qVB0lgCmDd9RK-T0_Kcwar6etjNEOs1M6WiU188g
+        400:
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                Name duplication:
+                  description: Request name is not unique
+                  value:
+                    error: Name already exists
+                Email duplication:
+                  description: Request email is not unique
+                  value:
+                    error: Email already exists
+                Short Password:
+                  description: Request password is shorter than minimum set
+                  value:
+                    error: Password must be at least 6 characters long
+                Invalid Password:
+                  description: Request password contains 'password'
+                  value:
+                    error: Password cannot contain 'password'
+                Invalid Email:
+                  description: Request email is invalid
+                  value:
+                    error: Invalid Email
+                Name is required:
+                  description: Request name cannot be empty
+                  value:
+                    error: A username is required
+                Email is required:
+                  description: Request email cannot be empty
+                  value:
+                    error: An email is required
+
+  /users/login:
+    post:
+      tags:
+        - User
+      summary: Login user
+      requestBody:
+        description: User's **email** and **password** is required to be authenticated
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestLoginUser"
+            example:
+              email: james_bond@mission.com
+              password: mission007
+      responses:
+        200:
+          description: User successfully login
+          content:
+            application/json:
+              example:
+                user:
+                  _id: 6111d3a84df9cf27887c1f20
+                  name: James Bond
+                  email: james_bond@mission.com
+                  age: 0
+                  createdAt: 2021-08-10T02:17:03.009Z
+                  updatedAt: 2021-08-10T02:17:03.009Z
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9eyJfaWQiOiI2MTExZTE5ZTAwOGQ5YTMzYWM5NTI0YmMiLCJpYXQiOjE2Mjg1NjE4MjN9Be3qVB0lgCmDd9RK-T0_Kcwar6etjNEOs1M6WiU188g
+        403:
+          description: Access denied
+          content:
+            application/json:
+              example:
+                error: Access denied
+        404:
+          description: User has not registered yet
+          content:
+            application/json:
+              example:
+                error: User has not registered yet
+  /users/me:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - User
+      summary: Get user data
+      responses:
+        200:
+          description: Successfully get user data
+          content:
+            application/json:
+              example:
+                _id: 6111d3a84df9cf27887c1f20
+                name: James Bond
+                email: james_bond@mission.com
+                age: 0
+                createdAt: 2021-08-10T02:17:03.009Z
+                updatedAt: 2021-08-10T02:17:03.009Z
+
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - User
+      summary: Update user data
+      requestBody:
+        description: User **name**, **email**, **password**, and **age** can be updated
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestUpdateUser"
+            example:
+              name: New James Bond
+              email: new_james_bond@mission.com
+              password: new_mission007
+              age: 37
+      responses:
+        200:
+          description: Successfully updated user data
+          content:
+            application/json:
+              example:
+                _id: 6111d3a84df9cf27887c1f20
+                name: New James Bond
+                email: new_james_bond@mission.com
+                age: 37
+                createdAt: 2021-08-10T02:17:03.009Z
+                updatedAt: 2021-08-10T05:03:30.862Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+        400:
+          description: Bad request
+          content:
+            application/json:
+              examples:
+                Invalid Updates:
+                  description: The request body contain properties not belong to User schema
+                  value:
+                    error: Invalid updates
+                Name duplication:
+                  description: Request name is not unique
+                  value:
+                    error: Name already exists
+                Email duplication:
+                  description: Request email is not unique
+                  value:
+                    error: Email already exists
+                Short Password:
+                  description: Request password is shorter than minimum set
+                  value:
+                    error: Password must be at least 6 characters long
+                Password Invalid:
+                  description: Request password contains 'password'
+                  value:
+                    error: Password cannot contain 'password'
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - User
+      summary: Delete current user
+      responses:
+        200:
+          description: Successfully deleted user
+          content:
+            application/json:
+              example:
+                message: Deleted
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+  /users/logout:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - User
+      summary: Logout user from current device
+      responses:
+        200:
+          description: Successfully logout user
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+
+  /users/logoutAll:
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - User
+      summary: Logout user from all devices
+      responses:
+        200:
+          description: Successfully logout user from every devices
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+
+  /tasks:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Task
+      summary: Get all tasks
+      parameters:
+        - name: completed
+          in: query
+          description: True or False for the tasks
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          description: The page number to access
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          description: The number of a page
+          schema:
+            type: integer
+        - name: sortBy
+          in: query
+          description: The property of the task to be sorted either by desc or asc ```sortBy=completed:desc```
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully obtained current user's task/s
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  example:
+                    _id: 611215dc105743549012dc31
+                    description: Help a british agent 272 escape from East Berlin
+                    completed: false
+                    author: 61121010d676405690cee467
+                    createdAt: 2021-08-10T02:17:03.009Z
+                    updatedAt: 2021-08-10T05:03:30.862Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+    post:
+      security:
+        - BearerAuth: []
+      tags:
+        - Task
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: Task
+              $ref: "#/components/schemas/RequestCreateTask"
+            example:
+              description: Second mission to Thailand
+
+      responses:
+        200:
+          description: Successfully created a new task
+          content:
+            application/json:
+              example:
+                _id: 61121b9652352c4b505aad60
+                description: Second mission to Thailand
+                completed: false
+                author: 61121010d676405690cee467
+                createdAt: 2021-08-10T06:24:22.660Z
+                updatedAt: 2021-08-10T06:24:22.660Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+        400:
+          description: Description cannot be empty
+          content:
+            application/json:
+              example:
+                error: Description is required
+
+  /tasks/{id}:
+    get:
+      security:
+        - BearerAuth: []
+      tags:
+        - Task
+      summary: Get specific task with the given id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successfully getting the task
+          content:
+            application/json:
+              example:
+                _id: 61121b9652352c4b505aad60
+                description: Second mission to Thailand
+                author: 61121010d676405690cee467
+                completed: false
+                createdAt: 2021-08-10T06:24:22.660Z
+                updatedAt: 2021-08-10T06:24:22.660Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+        404:
+          description: Task can't be found
+          content:
+            application/json:
+              example:
+                error: Task with given ID can't be found
+        400:
+          description: Invalid id
+          content:
+            application/json:
+              example:
+                error: "Invalid id"
+    patch:
+      security:
+        - BearerAuth: []
+      tags:
+        - Task
+      summary: Update the task with the given id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: Task
+              $ref: "#/components/schemas/RequestUpdateTask"
+            example:
+              description: Second mission to Thailand
+              completed: true
+      responses:
+        200:
+          description: Successfully updated the task
+          content:
+            application/json:
+              example:
+                _id: 61121b9652352c4b505aad60
+                description: Second mission to Thailand
+                author: 61121010d676405690cee467
+                completed: true
+                createdAt: 2021-08-10T06:24:22.660Z
+                updatedAt: 2021-08-10T06:49:36.599Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+        404:
+          description: Task can't be found
+          content:
+            application/json:
+              example:
+                error: Task with given ID can't be found
+        400:
+          description: Bad Request
+          content:
+            application/json:
+              examples:
+                Invalid ID:
+                  description: Invalid id
+                  value:
+                    error: "Invalid id"
+                Description is required:
+                  description: Description cannot be empty
+                  value:
+                    error: Description is required
+
+    delete:
+      security:
+        - BearerAuth: []
+      tags:
+        - Task
+      summary: Delete the task with the given id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Successfully deleted the task
+          content:
+            application/json:
+              example:
+                _id: 61121b9652352c4b505aad60
+                description: Second mission to Thailand
+                author: 61121010d676405690cee467
+                completed: true
+                createdAt: 2021-08-10T06:24:22.660Z
+                updatedAt: 2021-08-10T06:49:36.599Z
+        401:
+          description: Unauthorized Access
+          content:
+            application/json:
+              example:
+                error: Unauthorized Access
+        404:
+          description: Task can't be found
+          content:
+            application/json:
+              example:
+                error: Task with given ID can't be found
+        400:
+          description: Invalid id
+          content:
+            application/json:
+              example:
+                error: "Invalid id"

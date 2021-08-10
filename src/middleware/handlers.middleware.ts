@@ -27,7 +27,7 @@ export const errorHandler: ErrorRequestHandler = async (err: unknown, req, res, 
 	} else if (err instanceof JsonWebTokenError) {
 		res.status(401).send({ error: "Unauthorized Access" });
 	} else {
-		console.log(err);
+		// console.log(err);
 		res.status(500).send(err);
 	}
 };

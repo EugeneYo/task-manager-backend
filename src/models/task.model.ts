@@ -2,9 +2,9 @@
 // const validator = require("validator");
 
 import { Document, Model, Schema, model, HookNextFunction, LeanDocument } from "mongoose";
-
+import CustomError from "@class/CustomError";
 export interface ITask {
-	[index: string]: any;
+	// [index: string]: any;
 	description: string;
 	completed: boolean;
 	author: Schema.Types.ObjectId;
@@ -17,7 +17,7 @@ const TaskSchema = new Schema<ITaskDocument, ITaskModel>(
 	{
 		description: {
 			type: String,
-			required: true,
+			required: [true, "Description is required"],
 			trim: true,
 		},
 		completed: {
@@ -35,6 +35,21 @@ const TaskSchema = new Schema<ITaskDocument, ITaskModel>(
 		timestamps: true,
 	}
 );
+
+TaskSchema.post("save", function (error: any, doc: ITaskDocument, next: HookNextFunction) {
+	let errorMessage: string;
+	if (error.name === "ValidationError") {
+		let temp_message: string[] = [];
+		for (let field in error.errors) {
+			temp_message.push(error.errors[field].message);
+		}
+		// Description is required
+		errorMessage = temp_message.join(". ");
+	} else {
+		errorMessage = error;
+	}
+	next(new CustomError(400, errorMessage));
+});
 
 const Task = model<ITaskDocument, ITaskModel>("Task", TaskSchema);
 
