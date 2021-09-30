@@ -7,12 +7,20 @@ const createNewUser = wrapper(async (req: Request, res: Response) => {
 	const new_user = new User(req.body);
 	await new_user.save();
 	const token = await new_user.generateAuthToken(); // document methods
+	// res.cookie("jwt", token, {
+	// 	expires: new Date(Date.now() + 30000),
+	// 	httpOnly: true,
+	// });
 	res.status(201).send({ user: new_user.getPublic(), token });
 });
 
 const loginUser = wrapper(async (req: Request, res: Response, next: NextFunction) => {
 	const user = await User.findByCredentials(req.body.email, req.body.password); // model statics (methods)
 	const token = await user.generateAuthToken(); // document methods
+	// res.cookie("jwt", token, {
+	// 	expires: new Date(Date.now() + 30000),
+	// 	httpOnly: true,
+	// });
 	res.status(200).send({ user: user.getPublic(), token });
 });
 

@@ -86,7 +86,7 @@ const UserSchema = new Schema<IUserDocument, IUserModel>(
 
 // methods are defined on the document(instance).
 UserSchema.methods.generateAuthToken = async function () {
-	const user = this;
+	const user = this as IUserDocument;
 	const token = jwt.sign({ _id: user._id.toString() }, JSON_WEB_TOKEN_SECRET, {});
 	user.tokens = user.tokens?.concat({ token });
 	await user.save();
@@ -113,7 +113,7 @@ UserSchema.virtual("tasks", {
 // };
 
 UserSchema.methods.getPublic = function () {
-	const user = this;
+	const user = this as IUserDocument;
 	const publicProfile = user.toObject();
 
 	delete publicProfile.__v;
@@ -135,7 +135,7 @@ UserSchema.statics.findByCredentials = async (email, password) => {
 // Mongoose middleware
 // hash the password upon save()
 UserSchema.pre("save", async function (next: HookNextFunction) {
-	const user = this;
+	const user = this as IUserDocument;
 
 	if (user.isModified("password")) {
 		user.password = await bcrypt.hash(user.password!, 10);
@@ -165,7 +165,7 @@ UserSchema.post("save", function (error: any, doc: IUserDocument, next: HookNext
 
 // Delete user tasks when the user is removed
 UserSchema.pre("remove", async function (next: HookNextFunction) {
-	const user = this;
+	const user = this as IUserDocument;
 	await Task.deleteMany({ author: user._id });
 	next();
 });
